@@ -1,0 +1,15 @@
+{
+  "id": "/dutch-trainer/",
+  "name": "Dutch in Two Weeks",
+  "short_name": "Dutch",
+  "description": "Intensive Dutch language trainer with adjustable pace.",
+  "start_url": "/dutch-trainer/index.html",
+  "scope": "/dutch-trainer/",
+  "display": "standalone",
+  "background_color": "#F5F7FA",
+  "theme_color": "#F2762E",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

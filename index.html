@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
+<title>Dutch in Two Weeks</title>
+<meta name="theme-color" content="#F2762E">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dutch">
+<style>
+  :root {
+    --bg: #F5F7FA;
+    --surface: #FFFFFF;
+    --ink: #1E2A3A;
+    --muted: #6B7A8F;
+    --border: #DCE3EC;
+    --accent: #F2762E;
+    --accent-ink: #FFFFFF;
+    --accent-2: #2D5FA3;
+    --accent-2-soft: #E3EDF7;
+    --good: #2E9E6C;
+    --good-soft: #E4F5EC;
+    --track: #E7ECF3;
+    --shadow: 0 1px 2px rgba(30,42,58,0.06), 0 8px 24px rgba(30,42,58,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12181F; --surface: #1B232D; --ink: #EAF0F6; --muted: #8FA0B5;
+      --border: #2C3742; --accent: #FF8A47; --accent-ink: #241005;
+      --accent-2: #5B9BDD; --accent-2-soft: #1E2E3E; --good: #4BC48A; --good-soft: #163326;
+      --track: #232D38; --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 8px 24px rgba(0,0,0,0.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12181F; --surface: #1B232D; --ink: #EAF0F6; --muted: #8FA0B5;
+    --border: #2C3742; --accent: #FF8A47; --accent-ink: #241005;
+    --accent-2: #5B9BDD; --accent-2-soft: #1E2E3E; --good: #4BC48A; --good-soft: #163326;
+    --track: #232D38; --shadow: 0 1px 2px rgba(0,0,0,0.35), 0 8px 24px rgba(0,0,0,0.3);
+  }
+  :root[data-theme="light"] {
+    --bg: #F5F7FA; --surface: #FFFFFF; --ink: #1E2A3A; --muted: #6B7A8F;
+    --border: #DCE3EC; --accent: #F2762E; --accent-ink: #FFFFFF;
+    --accent-2: #2D5FA3; --accent-2-soft: #E3EDF7; --good: #2E9E6C; --good-soft: #E4F5EC;
+    --track: #E7ECF3; --shadow: 0 1px 2px rgba(30,42,58,0.06), 0 8px 24px rgba(30,42,58,0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  .app { max-width: 720px; margin: 0 auto; padding: 24px 18px 90px; }
+  a { color: inherit; }
+  button { font: inherit; }
+
+  header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand .flag { font-size: 1.6rem; line-height: 1; }
+  .brand h1 { font-size: 1.25rem; font-weight: 900; letter-spacing: -0.01em; margin: 0; }
+  .brand .sub { font-size: 0.72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+  .streak-pill {
+    display: flex; align-items: center; gap: 6px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px;
+    font-weight: 800; font-size: 0.85rem; box-shadow: var(--shadow); white-space: nowrap;
+  }
+
+  .pace-card {
+    margin-top: 18px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow);
+  }
+  .pace-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+  .pace-top strong { font-size: 0.95rem; }
+  .pace-badge { font-size: 0.72rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .pace-badge.ahead { background: var(--good-soft); color: var(--good); }
+  .pace-badge.ontrack { background: var(--accent-2-soft); color: var(--accent-2); }
+  .pace-badge.behind { background: var(--track); color: var(--muted); }
+  .track { height: 8px; border-radius: 999px; background: var(--track); overflow: hidden; }
+  .track .fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); border-radius: 999px; transition: width .3s ease; }
+  .pace-note { font-size: 0.78rem; color: var(--muted); margin-top: 8px; }
+  .pace-toggle { display: flex; gap: 6px; margin-top: 12px; }
+  .pace-toggle button {
+    flex: 1; padding: 7px 8px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--muted); font-size: 0.76rem; font-weight: 700; cursor: pointer;
+  }
+  .pace-toggle button.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+  .review-cta {
+    margin-top: 14px; display: flex; align-items: center; gap: 12px;
+    background: linear-gradient(135deg, var(--accent), #ff9a5c);
+    color: var(--accent-ink); border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow);
+    cursor: pointer; border: none; width: 100%; text-align: left;
+  }
+  .review-cta .emoji { font-size: 1.8rem; }
+  .review-cta .txt strong { display: block; font-size: 1rem; }
+  .review-cta .txt span { font-size: 0.8rem; opacity: 0.92; }
+
+  h2.section-h { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); font-weight: 800; margin: 26px 0 10px; }
+
+  .unit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .unit-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 14px; cursor: pointer; box-shadow: var(--shadow); text-align: left; position: relative;
+  }
+  .unit-card .u-day { font-size: 0.68rem; font-weight: 800; color: var(--accent-2); text-transform: uppercase; letter-spacing: 0.06em; }
+  .unit-card .u-icon { font-size: 1.6rem; margin: 4px 0 6px; }
+  .unit-card .u-title { font-weight: 800; font-size: 0.92rem; margin-bottom: 6px; }
+  .unit-card .u-track { height: 5px; border-radius: 999px; background: var(--track); overflow: hidden; margin-bottom: 4px; }
+  .unit-card .u-track .fill { height: 100%; background: var(--good); }
+  .unit-card .u-count { font-size: 0.7rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .unit-card.done::after {
+    content: "✓"; position: absolute; top: 10px; right: 10px; width: 20px; height: 20px;
+    background: var(--good); color: #fff; border-radius: 50%; display: grid; place-content: center;
+    font-size: 0.7rem; font-weight: 900;
+  }
+
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .back-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .back-btn {
+    border: 1px solid var(--border); background: var(--surface); border-radius: 10px;
+    padding: 8px 12px; cursor: pointer; font-weight: 700; font-size: 0.85rem; color: var(--ink);
+  }
+  .screen-title { font-size: 1.05rem; font-weight: 900; }
+
+  .card-stage { display: flex; flex-direction: column; align-items: center; gap: 18px; margin-top: 10px; }
+  .flashcard {
+    width: 100%; max-width: 420px; min-height: 220px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 22px; box-shadow: var(--shadow);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; padding: 30px 24px; cursor: pointer; text-align: center;
+  }
+  .flashcard .nl { font-size: 1.7rem; font-weight: 900; letter-spacing: -0.01em; }
+  .flashcard .en { font-size: 1.15rem; color: var(--accent-2); font-weight: 700; min-height: 1.4em; }
+  .flashcard .hint { font-size: 0.76rem; color: var(--muted); }
+  .flashcard .speak { font-size: 1.4rem; }
+  .card-progress { font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .assess-row { display: flex; gap: 10px; width: 100%; max-width: 420px; }
+  .assess-row button {
+    flex: 1; padding: 13px; border-radius: 14px; border: none; font-weight: 800; font-size: 0.9rem; cursor: pointer;
+  }
+  .assess-row .again { background: var(--track); color: var(--ink); }
+  .assess-row .got-it { background: var(--good); color: #fff; }
+
+  .preview-list { display: flex; flex-direction: column; gap: 8px; }
+  .preview-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px;
+    cursor: pointer;
+  }
+  .preview-item .p-nl { font-weight: 800; }
+  .preview-item .p-en { font-size: 0.85rem; color: var(--muted); }
+  .preview-item .p-speak { font-size: 1.2rem; flex-shrink: 0; }
+
+  .primary-btn {
+    display: block; width: 100%; max-width: 420px; margin: 10px auto 0; padding: 14px;
+    border-radius: 14px; border: none; background: var(--accent); color: var(--accent-ink);
+    font-weight: 900; font-size: 0.95rem; cursor: pointer; text-align: center;
+  }
+  .ghost-btn {
+    display: block; width: 100%; max-width: 420px; margin: 10px auto 0; padding: 12px;
+    border-radius: 14px; border: 1px solid var(--border); background: transparent; color: var(--ink);
+    font-weight: 700; font-size: 0.88rem; cursor: pointer; text-align: center;
+  }
+
+  .quiz-q { text-align: center; margin: 8px 0 20px; }
+  .quiz-q .prompt-label { font-size: 0.76rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+  .quiz-q .prompt-word { font-size: 1.6rem; font-weight: 900; margin-top: 6px; }
+  .quiz-opts { display: flex; flex-direction: column; gap: 10px; max-width: 420px; margin: 0 auto; }
+  .quiz-opts button {
+    padding: 14px; border-radius: 14px; border: 1.5px solid var(--border); background: var(--surface);
+    font-weight: 700; font-size: 0.95rem; cursor: pointer; text-align: left; color: var(--ink);
+  }
+  .quiz-opts button.correct { border-color: var(--good); background: var(--good-soft); color: var(--good); }
+  .quiz-opts button.wrong { border-color: #D9534F; background: #FBE7E6; color: #C0392B; }
+  .type-input {
+    max-width: 420px; margin: 0 auto; display: block; width: 100%; padding: 14px 16px;
+    border-radius: 14px; border: 1.5px solid var(--border); background: var(--surface); color: var(--ink);
+    font-size: 1rem; font-family: inherit;
+  }
+  .type-input:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+  .type-feedback { max-width: 420px; margin: 10px auto 0; font-size: 0.85rem; font-weight: 700; text-align: center; min-height: 1.4em; }
+  .type-feedback.correct { color: var(--good); }
+  .type-feedback.wrong { color: #C0392B; }
+
+  .result-hero { text-align: center; padding: 20px 0; }
+  .result-hero .emoji { font-size: 2.6rem; }
+  .result-hero h3 { font-size: 1.2rem; margin: 8px 0 4px; }
+  .result-hero p { color: var(--muted); font-size: 0.9rem; margin: 0; }
+
+  .settings-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 16px; margin-bottom: 10px;
+  }
+  .settings-row .label { font-weight: 700; font-size: 0.9rem; }
+  .settings-row .desc { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  select.voice-select {
+    padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg);
+    color: var(--ink); font-size: 0.85rem; max-width: 160px;
+  }
+
+  footer.note { margin-top: 36px; font-size: 0.78rem; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div id="screen-home" class="screen active">
+    <header class="top">
+      <div class="brand">
+        <div class="flag">🧡</div>
+        <div>
+          <h1>Dutch in Two Weeks</h1>
+          <div class="sub">Survival Dutch, your pace</div>
+        </div>
+      </div>
+      <div class="streak-pill">🔥 <span id="streakCount">0</span></div>
+    </header>
+
+    <div class="pace-card">
+      <div class="pace-top">
+        <strong id="paceHeadline">0 / 14 units done</strong>
+        <span class="pace-badge ontrack" id="paceBadge">on track</span>
+      </div>
+      <div class="track"><div class="fill" id="paceFill" style="width:0%"></div></div>
+      <div class="pace-note" id="paceNote">Suggested pace is one unit a day — but there's no lock. Go as fast as you like.</div>
+      <div class="pace-toggle">
+        <button id="paceIntensiveBtn" class="active">⚡ Intensive — no pacing shown</button>
+        <button id="paceSteadyBtn">🌱 Show suggested daily pace</button>
+      </div>
+    </div>
+
+    <button class="review-cta" id="reviewCta">
+      <div class="emoji">🔁</div>
+      <div class="txt"><strong id="reviewHeadline">Daily review</strong><span id="reviewSub">Nothing due yet — learn a unit first</span></div>
+    </button>
+
+    <h2 class="section-h">14 Units</h2>
+    <div class="unit-grid" id="unitGrid"></div>
+
+    <h2 class="section-h">Settings</h2>
+    <div class="settings-row">
+      <div>
+        <div class="label">Dutch voice</div>
+        <div class="desc">Used for pronunciation audio</div>
+      </div>
+      <select id="voiceSelect" class="voice-select"><option>Loading…</option></select>
+    </div>
+    <div class="settings-row">
+      <div>
+        <div class="label">Reset all progress</div>
+        <div class="desc">Clears everything on this device</div>
+      </div>
+      <button class="ghost-btn" style="width:auto;margin:0;" id="resetAllBtn">Reset</button>
+    </div>
+
+    <footer class="note">Nothing leaves this device — progress is saved only in this browser.</footer>
+  </div>
+
+  <div id="screen-unit" class="screen">
+    <div class="back-row">
+      <button class="back-btn" onclick="goHome()">← Units</button>
+      <div class="screen-title" id="unitScreenTitle"></div>
+    </div>
+    <div id="unitPreviewList" class="preview-list"></div>
+    <button class="primary-btn" id="startLearnBtn">Start flashcards →</button>
+  </div>
+
+  <div id="screen-learn" class="screen">
+    <div class="back-row">
+      <button class="back-btn" onclick="goHome()">← Units</button>
+      <div class="screen-title">Flashcards</div>
+    </div>
+    <div class="card-stage">
+      <div class="card-progress" id="learnProgress"></div>
+      <div class="flashcard" id="learnCard">
+        <div class="speak">🔊</div>
+        <div class="nl" id="learnNl"></div>
+        <div class="en" id="learnEn"></div>
+        <div class="hint" id="learnHint">Tap the card to reveal &amp; hear it</div>
+      </div>
+      <div class="assess-row" id="learnAssessRow" style="display:none;">
+        <button class="again" id="learnAgainBtn">Still learning</button>
+        <button class="got-it" id="learnGotItBtn">Got it ✓</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-quiz" class="screen">
+    <div class="back-row">
+      <button class="back-btn" onclick="goHome()">← Units</button>
+      <div class="screen-title">Quick quiz</div>
+    </div>
+    <div class="card-progress" id="quizProgress" style="text-align:center;margin-bottom:10px;"></div>
+    <div class="quiz-q">
+      <div class="prompt-label" id="quizPromptLabel"></div>
+      <div class="prompt-word" id="quizPromptWord"></div>
+    </div>
+    <div class="quiz-opts" id="quizOpts"></div>
+    <input type="text" id="quizTypeInput" class="type-input" style="display:none;" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Type the Dutch word…">
+    <div class="type-feedback" id="quizTypeFeedback"></div>
+    <button class="ghost-btn" id="quizSubmitTypeBtn" style="display:none;">Check</button>
+  </div>
+
+  <div id="screen-result" class="screen">
+    <div class="result-hero">
+      <div class="emoji" id="resultEmoji">🎉</div>
+      <h3 id="resultTitle">Unit complete!</h3>
+      <p id="resultSub"></p>
+    </div>
+    <button class="primary-btn" onclick="goHome()">Back to units</button>
+  </div>
+
+  <div id="screen-review" class="screen">
+    <div class="back-row">
+      <button class="back-btn" onclick="goHome()">← Units</button>
+      <div class="screen-title">Daily review</div>
+    </div>
+    <div class="card-progress" id="reviewProgress" style="text-align:center;margin-bottom:10px;"></div>
+    <div class="quiz-q">
+      <div class="prompt-label" id="reviewPromptLabel"></div>
+      <div class="prompt-word" id="reviewPromptWord"></div>
+    </div>
+    <div class="quiz-opts" id="reviewOpts"></div>
+  </div>
+
+</div>
+
+<script>
+const UNITS = [
+  { id: "greetings", icon: "👋", title: "Greetings & Basics", items: [
+    ["Hallo", "Hello"], ["Dag", "Hi / Bye (informal)"], ["Goedemorgen", "Good morning"],
+    ["Goedemiddag", "Good afternoon"], ["Goedenavond", "Good evening"], ["Tot ziens", "Goodbye"],
+    ["Doei", "Bye (informal)"], ["Alsjeblieft", "Please / here you go"], ["Dank je wel", "Thank you"],
+    ["Sorry", "Sorry / excuse me"], ["Ja", "Yes"], ["Nee", "No"],
+  ]},
+  { id: "numbers", icon: "🔢", title: "Numbers & Time", items: [
+    ["Nul", "Zero"], ["Een", "One"], ["Twee", "Two"], ["Drie", "Three"], ["Vier", "Four"],
+    ["Vijf", "Five"], ["Zes", "Six"], ["Zeven", "Seven"], ["Acht", "Eight"], ["Negen", "Nine"],
+    ["Tien", "Ten"], ["Hoe laat is het?", "What time is it?"],
+  ]},
+  { id: "family", icon: "👪", title: "Family & People", items: [
+    ["Moeder", "Mother"], ["Vader", "Father"], ["Zus", "Sister"], ["Broer", "Brother"],
+    ["Dochter", "Daughter"], ["Zoon", "Son"], ["Vriend", "Friend / boyfriend"],
+    ["Vriendin", "Friend / girlfriend"], ["Man", "Man / husband"], ["Vrouw", "Woman / wife"],
+    ["Kind", "Child"], ["Familie", "Family"],
+  ]},
+  { id: "food", icon: "🍞", title: "Food & Drink", items: [
+    ["Brood", "Bread"], ["Kaas", "Cheese"], ["Water", "Water"], ["Koffie", "Coffee"],
+    ["Thee", "Tea"], ["Melk", "Milk"], ["Bier", "Beer"], ["Wijn", "Wine"], ["Appel", "Apple"],
+    ["Eten", "To eat / food"], ["Drinken", "To drink"], ["Lekker", "Tasty / nice"],
+  ]},
+  { id: "cafe", icon: "☕", title: "Café & Restaurant", items: [
+    ["Mag ik... alstublieft?", "May I have... please?"], ["De rekening, alstublieft", "The bill, please"],
+    ["Ik wil graag...", "I would like..."], ["Wat kunt u aanbevelen?", "What do you recommend?"],
+    ["Heeft u een menu in het Engels?", "Do you have an English menu?"], ["Proost!", "Cheers!"],
+    ["Eet smakelijk", "Enjoy your meal"], ["Ik ben allergisch voor...", "I'm allergic to..."],
+    ["Vegetarisch", "Vegetarian"], ["Nog een, alstublieft", "One more, please"],
+  ]},
+  { id: "shopping", icon: "🛍️", title: "Shopping", items: [
+    ["Hoeveel kost dit?", "How much does this cost?"], ["Te duur", "Too expensive"],
+    ["Goedkoop", "Cheap"], ["Ik kijk alleen even", "I'm just looking"],
+    ["Kan ik met kaart betalen?", "Can I pay by card?"], ["Contant", "Cash"],
+    ["Korting", "Discount"], ["Winkel", "Shop"], ["Markt", "Market"], ["Maat", "Size"],
+  ]},
+  { id: "directions", icon: "🧭", title: "Directions & Transport", items: [
+    ["Waar is...?", "Where is...?"], ["Links", "Left"], ["Rechts", "Right"],
+    ["Rechtdoor", "Straight ahead"], ["Station", "Station"], ["Trein", "Train"], ["Bus", "Bus"],
+    ["Fiets", "Bicycle"], ["Hoe kom ik bij...?", "How do I get to...?"], ["Ver", "Far"], ["Dichtbij", "Close / nearby"],
+  ]},
+  { id: "smalltalk", icon: "🌤️", title: "Weather & Small Talk", items: [
+    ["Het weer", "The weather"], ["Het regent", "It's raining"], ["Het is zonnig", "It's sunny"],
+    ["Het is koud", "It's cold"], ["Het is warm", "It's warm"], ["Hoe gaat het?", "How are you?"],
+    ["Goed, dank je", "Good, thank you"], ["Wat doe je?", "What do you do (for work)?"],
+    ["Waar kom je vandaan?", "Where are you from?"], ["Ik kom uit Engeland", "I'm from England"],
+  ]},
+  { id: "days", icon: "📅", title: "Days & Dates", items: [
+    ["Maandag", "Monday"], ["Dinsdag", "Tuesday"], ["Woensdag", "Wednesday"], ["Donderdag", "Thursday"],
+    ["Vrijdag", "Friday"], ["Zaterdag", "Saturday"], ["Zondag", "Sunday"],
+    ["Vandaag", "Today"], ["Morgen", "Tomorrow"], ["Gisteren", "Yesterday"],
+  ]},
+  { id: "hotel", icon: "🛎️", title: "At the Hotel", items: [
+    ["Ik heb een reservering", "I have a reservation"], ["Kamer", "Room"], ["Sleutel", "Key"],
+    ["Is het ontbijt inbegrepen?", "Is breakfast included?"], ["Wat tijd is het ontbijt?", "What time is breakfast?"],
+    ["Ik wil graag inchecken", "I'd like to check in"], ["Uitchecken", "Check out"],
+    ["Wifi wachtwoord", "Wifi password"], ["Handdoek", "Towel"], ["Schoon", "Clean"],
+  ]},
+  { id: "health", icon: "🚑", title: "Emergencies & Health", items: [
+    ["Help!", "Help!"], ["Ik ben ziek", "I'm sick"], ["Dokter", "Doctor"], ["Ziekenhuis", "Hospital"],
+    ["Apotheek", "Pharmacy"], ["Bel een ambulance", "Call an ambulance"], ["Het doet pijn", "It hurts"],
+    ["Ik heb hoofdpijn", "I have a headache"], ["Politie", "Police"],
+    ["Waar is de dichtstbijzijnde...?", "Where's the nearest...?"],
+  ]},
+  { id: "work", icon: "🤝", title: "Introducing Yourself", items: [
+    ["Ik heet...", "My name is..."], ["Wat is je naam?", "What's your name?"],
+    ["Leuk je te ontmoeten", "Nice to meet you"], ["Ik werk als...", "I work as..."],
+    ["Ik kom uit...", "I come from..."], ["Spreek je Engels?", "Do you speak English?"],
+    ["Ik spreek een beetje Nederlands", "I speak a little Dutch"], ["Ik begrijp het niet", "I don't understand"],
+    ["Kunt u dat herhalen?", "Can you repeat that?"], ["Langzamer, alstublieft", "Slower, please"],
+  ]},
+  { id: "verbs", icon: "🧩", title: "Common Verbs", items: [
+    ["Zijn", "To be"], ["Ik ben", "I am"], ["Hebben", "To have"], ["Ik heb", "I have"],
+    ["Willen", "To want"], ["Kunnen", "Can / to be able to"], ["Gaan", "To go"], ["Doen", "To do"],
+    ["Zien", "To see"], ["Weten", "To know"], ["Houden van", "To like / love"], ["Graag", "Gladly (ik wil graag = I'd like)"],
+  ]},
+  { id: "polish", icon: "✨", title: "Politeness & Idioms", items: [
+    ["Meneer", "Sir"], ["Mevrouw", "Madam"], ["Gezellig", "Cosy, convivial (very Dutch!)"],
+    ["Doe rustig aan", "Take it easy"], ["Tot straks", "See you later"], ["Welterusten", "Good night"],
+    ["Fijne dag!", "Have a nice day!"], ["Geen probleem", "No problem"], ["Veel succes!", "Good luck!"],
+    ["Gefeliciteerd", "Congratulations"],
+  ]},
+];
+
+const STORAGE_KEY = "dutch-2wk-v1";
+const SRS_INTERVALS_DAYS = [1, 2, 4, 7, 14, 30];
+
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function loadState() {
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch (e) { s = {}; }
+  if (!s.firstOpened) s.firstOpened = todayStr();
+  if (!s.srs) s.srs = {};
+  if (!s.unitDone) s.unitDone = {};
+  if (!s.streak) s.streak = { count: 0, lastActive: null };
+  if (!s.paceMode) s.paceMode = "intensive";
+  if (!s.voiceURI) s.voiceURI = null;
+  return s;
+}
+let state = loadState();
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+function touchStreak() {
+  const t = todayStr();
+  if (state.streak.lastActive === t) return;
+  if (state.streak.lastActive === addDays(t, -1)) state.streak.count += 1;
+  else state.streak.count = 1;
+  state.streak.lastActive = t;
+  save();
+}
+
+function itemKey(unitId, idx) { return unitId + "-" + idx; }
+
+function markReviewed(key, correct) {
+  const entry = state.srs[key] || { box: 0, nextReview: todayStr() };
+  entry.box = correct ? Math.min(entry.box + 1, SRS_INTERVALS_DAYS.length - 1) : Math.max(entry.box - 1, 0);
+  entry.nextReview = addDays(todayStr(), SRS_INTERVALS_DAYS[entry.box]);
+  entry.lastSeen = todayStr();
+  state.srs[key] = entry;
+  save();
+}
+
+function dueReviewItems() {
+  const t = todayStr();
+  const due = [];
+  UNITS.forEach(u => u.items.forEach((item, idx) => {
+    const key = itemKey(u.id, idx);
+    const entry = state.srs[key];
+    if (entry && entry.nextReview <= t) due.push({ unit: u, idx, key, item });
+  }));
+  return due;
+}
+
+let voices = [];
+function loadVoices() {
+  voices = speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith("nl"));
+  const sel = document.getElementById("voiceSelect");
+  if (!voices.length) {
+    sel.innerHTML = "<option value=''>No Dutch voice found on this device</option>";
+    return;
+  }
+  sel.innerHTML = voices.map(v => `<option value="${v.voiceURI}">${v.name}</option>`).join("");
+  if (state.voiceURI && voices.some(v => v.voiceURI === state.voiceURI)) sel.value = state.voiceURI;
+  else { state.voiceURI = voices[0].voiceURI; save(); }
+}
+if (typeof speechSynthesis !== "undefined") {
+  speechSynthesis.onvoiceschanged = loadVoices;
+  loadVoices();
+}
+document.getElementById("voiceSelect").addEventListener("change", e => {
+  state.voiceURI = e.target.value; save();
+});
+
+function speak(text) {
+  if (typeof speechSynthesis === "undefined") return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text.replace(/\.\.\./g, ""));
+  u.lang = "nl-NL";
+  const v = voices.find(v => v.voiceURI === state.voiceURI);
+  if (v) u.voice = v;
+  u.rate = 0.92;
+  speechSynthesis.speak(u);
+}
+
+function show(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  window.scrollTo(0, 0);
+}
+function goHome() { renderHome(); show("screen-home"); }
+
+function unitStats(u) {
+  let learned = 0;
+  u.items.forEach((_, idx) => { if (state.srs[itemKey(u.id, idx)]) learned++; });
+  return { learned, total: u.items.length, done: !!state.unitDone[u.id] };
+}
+
+function renderHome() {
+  const totalItems = UNITS.reduce((a, u) => a + u.items.length, 0);
+  const learnedItems = UNITS.reduce((a, u) => a + unitStats(u).learned, 0);
+  const unitsDone = UNITS.filter(u => state.unitDone[u.id]).length;
+
+  document.getElementById("streakCount").textContent = state.streak.count;
+  document.getElementById("paceHeadline").textContent = `${unitsDone} / ${UNITS.length} units done`;
+  document.getElementById("paceFill").style.width = (unitsDone / UNITS.length * 100) + "%";
+
+  const paceCard = document.querySelector(".pace-card");
+  const daysSince = Math.floor((new Date(todayStr()) - new Date(state.firstOpened)) / 86400000) + 1;
+  const badge = document.getElementById("paceBadge");
+  const note = document.getElementById("paceNote");
+  if (state.paceMode === "steady") {
+    const suggestedUnit = Math.min(UNITS.length, daysSince);
+    let cls = "ontrack", txt = "on track";
+    if (unitsDone > suggestedUnit) { cls = "ahead"; txt = "ahead of pace"; }
+    else if (unitsDone < suggestedUnit) { cls = "behind"; txt = "behind pace"; }
+    badge.className = "pace-badge " + cls;
+    badge.textContent = txt;
+    note.textContent = `Day ${daysSince} of your 14-day plan — suggested pace has you finishing unit ${suggestedUnit}.`;
+    badge.style.display = "";
+  } else {
+    badge.style.display = "none";
+    note.textContent = "Intensive mode — no daily pacing shown, go through as many units as you like today.";
+  }
+  document.getElementById("paceIntensiveBtn").classList.toggle("active", state.paceMode !== "steady");
+  document.getElementById("paceSteadyBtn").classList.toggle("active", state.paceMode === "steady");
+
+  const due = dueReviewItems();
+  document.getElementById("reviewHeadline").textContent = due.length ? `Daily review — ${due.length} due` : "Daily review";
+  document.getElementById("reviewSub").textContent = due.length
+    ? "Quick-fire practice on everything you've learned so far"
+    : learnedItems ? "All caught up — nothing due right now" : "Nothing due yet — learn a unit first";
+  document.getElementById("reviewCta").disabled = due.length === 0;
+  document.getElementById("reviewCta").style.opacity = due.length ? "1" : "0.6";
+
+  const grid = document.getElementById("unitGrid");
+  grid.innerHTML = "";
+  UNITS.forEach((u, i) => {
+    const st = unitStats(u);
+    const card = document.createElement("button");
+    card.className = "unit-card" + (st.done ? " done" : "");
+    card.style.cssText = "font-family:inherit;";
+    card.innerHTML = `
+      <div class="u-day">Day ${i + 1}</div>
+      <div class="u-icon">${u.icon}</div>
+      <div class="u-title">${u.title}</div>
+      <div class="u-track"><div class="fill" style="width:${st.learned / st.total * 100}%"></div></div>
+      <div class="u-count">${st.learned} / ${st.total} learned</div>
+    `;
+    card.onclick = () => openUnit(u.id);
+    grid.appendChild(card);
+  });
+}
+
+document.getElementById("paceIntensiveBtn").onclick = () => { state.paceMode = "intensive"; save(); renderHome(); };
+document.getElementById("paceSteadyBtn").onclick = () => { state.paceMode = "steady"; save(); renderHome(); };
+document.getElementById("reviewCta").onclick = () => { if (dueReviewItems().length) startReview(); };
+document.getElementById("resetAllBtn").onclick = () => {
+  if (confirm("Reset all progress? This can't be undone.")) {
+    localStorage.removeItem(STORAGE_KEY);
+    state = loadState();
+    renderHome();
+  }
+};
+
+let currentUnit = null;
+function openUnit(unitId) {
+  currentUnit = UNITS.find(u => u.id === unitId);
+  document.getElementById("unitScreenTitle").textContent = currentUnit.icon + " " + currentUnit.title;
+  const list = document.getElementById("unitPreviewList");
+  list.innerHTML = "";
+  currentUnit.items.forEach(([nl, en]) => {
+    const row = document.createElement("div");
+    row.className = "preview-item";
+    row.innerHTML = `<div><div class="p-nl">${nl}</div><div class="p-en">${en}</div></div><div class="p-speak">🔊</div>`;
+    row.onclick = () => speak(nl);
+    list.appendChild(row);
+  });
+  show("screen-unit");
+}
+document.getElementById("startLearnBtn").onclick = () => startLearn(currentUnit);
+
+let learnQueue = [], learnIdx = 0, learnRevealed = false;
+function startLearn(unit) {
+  learnQueue = unit.items.map((item, idx) => ({ item, idx }));
+  learnIdx = 0;
+  showLearnCard();
+  show("screen-learn");
+}
+function showLearnCard() {
+  learnRevealed = false;
+  const { item } = learnQueue[learnIdx];
+  document.getElementById("learnNl").textContent = item[0];
+  document.getElementById("learnEn").textContent = "";
+  document.getElementById("learnHint").textContent = "Tap the card to reveal & hear it";
+  document.getElementById("learnAssessRow").style.display = "none";
+  document.getElementById("learnProgress").textContent = `${learnIdx + 1} / ${learnQueue.length}`;
+}
+document.getElementById("learnCard").onclick = () => {
+  const { item } = learnQueue[learnIdx];
+  if (!learnRevealed) {
+    learnRevealed = true;
+    document.getElementById("learnEn").textContent = item[1];
+    document.getElementById("learnHint").textContent = "";
+    document.getElementById("learnAssessRow").style.display = "flex";
+    speak(item[0]);
+  } else {
+    speak(item[0]);
+  }
+};
+function nextLearnCard(correct) {
+  const { idx } = learnQueue[learnIdx];
+  markReviewed(itemKey(currentUnit.id, idx), correct);
+  touchStreak();
+  learnIdx++;
+  if (learnIdx >= learnQueue.length) { startQuiz(currentUnit); return; }
+  showLearnCard();
+}
+document.getElementById("learnAgainBtn").onclick = () => nextLearnCard(false);
+document.getElementById("learnGotItBtn").onclick = () => nextLearnCard(true);
+
+let quizQueue = [], quizIdx = 0, quizScore = 0, quizUnit = null;
+function buildOptions(correctIdx, pool) {
+  const opts = [pool[correctIdx]];
+  const others = pool.filter((_, i) => i !== correctIdx).map((_, i) => i).sort(() => Math.random() - 0.5);
+  const otherIdxs = pool.map((_, i) => i).filter(i => i !== correctIdx).sort(() => Math.random() - 0.5).slice(0, 3);
+  otherIdxs.forEach(i => opts.push(pool[i]));
+  return opts.sort(() => Math.random() - 0.5);
+}
+function startQuiz(unit) {
+  quizUnit = unit;
+  quizQueue = unit.items.map((item, idx) => ({ item, idx, dir: Math.random() < 0.5 ? "nl-en" : "en-nl" }))
+    .sort(() => Math.random() - 0.5);
+  quizIdx = 0; quizScore = 0;
+  showQuizQ();
+  show("screen-quiz");
+}
+function showQuizQ() {
+  document.getElementById("quizTypeInput").style.display = "none";
+  document.getElementById("quizSubmitTypeBtn").style.display = "none";
+  document.getElementById("quizTypeFeedback").textContent = "";
+  document.getElementById("quizOpts").style.display = "flex";
+  const q = quizQueue[quizIdx];
+  document.getElementById("quizProgress").textContent = `${quizIdx + 1} / ${quizQueue.length}`;
+  const pool = quizUnit.items;
+  if (q.dir === "nl-en") {
+    document.getElementById("quizPromptLabel").textContent = "What does this mean?";
+    document.getElementById("quizPromptWord").textContent = q.item[0];
+    const opts = buildOptions(q.idx, pool.map(p => p[1]));
+    renderQuizOpts(opts, q.item[1], q.idx);
+  } else {
+    document.getElementById("quizPromptLabel").textContent = "How do you say this in Dutch?";
+    document.getElementById("quizPromptWord").textContent = q.item[1];
+    const opts = buildOptions(q.idx, pool.map(p => p[0]));
+    renderQuizOpts(opts, q.item[0], q.idx);
+  }
+}
+function renderQuizOpts(opts, correctAnswer, srcIdx) {
+  const wrap = document.getElementById("quizOpts");
+  wrap.innerHTML = "";
+  let answered = false;
+  opts.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.textContent = opt;
+    btn.onclick = () => {
+      if (answered) return;
+      answered = true;
+      const correct = opt === correctAnswer;
+      btn.classList.add(correct ? "correct" : "wrong");
+      if (!correct) {
+        [...wrap.children].forEach(b => { if (b.textContent === correctAnswer) b.classList.add("correct"); });
+      } else {
+        quizScore++;
+      }
+      markReviewed(itemKey(quizUnit.id, srcIdx), correct);
+      setTimeout(() => { quizIdx++; quizIdx >= quizQueue.length ? finishQuiz() : showQuizQ(); }, 700);
+    };
+    wrap.appendChild(btn);
+  });
+}
+function finishQuiz() {
+  state.unitDone[quizUnit.id] = true;
+  touchStreak();
+  save();
+  document.getElementById("resultEmoji").textContent = quizScore === quizQueue.length ? "🏆" : "🎉";
+  document.getElementById("resultTitle").textContent = quizUnit.icon + " " + quizUnit.title + " complete!";
+  document.getElementById("resultSub").textContent = `You scored ${quizScore} / ${quizQueue.length} — it's added to your daily review from now on.`;
+  show("screen-result");
+}
+
+let reviewQueue = [], reviewIdx = 0;
+function startReview() {
+  reviewQueue = dueReviewItems().sort(() => Math.random() - 0.5).map(d => ({
+    ...d, dir: Math.random() < 0.5 ? "nl-en" : "en-nl",
+  }));
+  reviewIdx = 0;
+  showReviewQ();
+  show("screen-review");
+}
+function allItemsFlat() {
+  const flat = [];
+  UNITS.forEach(u => u.items.forEach((item, idx) => flat.push({ unit: u, idx, item })));
+  return flat;
+}
+function showReviewQ() {
+  const r = reviewQueue[reviewIdx];
+  document.getElementById("reviewProgress").textContent = `${reviewIdx + 1} / ${reviewQueue.length}`;
+  const flat = allItemsFlat();
+  const pool = flat.filter(f => f.unit.id !== r.unit.id || f.idx !== r.idx);
+  const wrongPool = pool.sort(() => Math.random() - 0.5).slice(0, 3);
+  let opts, correctAnswer;
+  if (r.dir === "nl-en") {
+    document.getElementById("reviewPromptLabel").textContent = "What does this mean?";
+    document.getElementById("reviewPromptWord").textContent = r.item[0];
+    correctAnswer = r.item[1];
+    opts = [correctAnswer, ...wrongPool.map(w => w.item[1])].sort(() => Math.random() - 0.5);
+  } else {
+    document.getElementById("reviewPromptLabel").textContent = "How do you say this in Dutch?";
+    document.getElementById("reviewPromptWord").textContent = r.item[1];
+    correctAnswer = r.item[0];
+    opts = [correctAnswer, ...wrongPool.map(w => w.item[0])].sort(() => Math.random() - 0.5);
+  }
+  const wrap = document.getElementById("reviewOpts");
+  wrap.innerHTML = "";
+  let answered = false;
+  opts.forEach(opt => {
+    const btn = document.createElement("button");
+    btn.textContent = opt;
+    btn.onclick = () => {
+      if (answered) return;
+      answered = true;
+      const correct = opt === correctAnswer;
+      btn.classList.add(correct ? "correct" : "wrong");
+      if (!correct) [...wrap.children].forEach(b => { if (b.textContent === correctAnswer) b.classList.add("correct"); });
+      markReviewed(itemKey(r.unit.id, r.idx), correct);
+      setTimeout(() => {
+        reviewIdx++;
+        if (reviewIdx >= reviewQueue.length) {
+          touchStreak(); save();
+          document.getElementById("resultEmoji").textContent = "🔁";
+          document.getElementById("resultTitle").textContent = "Review complete!";
+          document.getElementById("resultSub").textContent = "Nice work — check back tomorrow for more.";
+          show("screen-result");
+        } else showReviewQ();
+      }, 700);
+    };
+    wrap.appendChild(btn);
+  });
+}
+
+renderHome();
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js", { scope: "/dutch-trainer/" }).catch(() => {});
+}
+</script>
+</body>
+</html>
