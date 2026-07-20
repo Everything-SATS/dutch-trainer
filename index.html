@@ -99,6 +99,7 @@
   .review-cta .emoji { font-size: 1.8rem; }
   .review-cta .txt strong { display: block; font-size: 1rem; }
   .review-cta .txt span { font-size: 0.8rem; opacity: 0.92; }
+  .review-cta.practice-cta { background: linear-gradient(135deg, var(--accent-2), #1f4a85); color: #fff; }
 
   h2.section-h { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); font-weight: 800; margin: 26px 0 10px; }
 
@@ -240,6 +241,11 @@
     <button class="review-cta" id="reviewCta">
       <div class="emoji">🔁</div>
       <div class="txt"><strong id="reviewHeadline">Daily review</strong><span id="reviewSub">Nothing due yet — learn a unit first</span></div>
+    </button>
+
+    <button class="review-cta practice-cta" id="practiceCta">
+      <div class="emoji">🧠</div>
+      <div class="txt"><strong id="practiceHeadline">Mixed practice</strong><span id="practiceSub">Finish a unit first to unlock this</span></div>
     </button>
 
     <h2 class="section-h">14 Units</h2>
@@ -554,6 +560,16 @@ function renderHome() {
   document.getElementById("reviewCta").disabled = due.length === 0;
   document.getElementById("reviewCta").style.opacity = due.length ? "1" : "0.6";
 
+  // Not gated by the SRS due-date schedule like Daily review is -- pools EVERY word from every
+  // unit marked complete so far (unit 1-4 done -> mixes 1-4, etc), shuffling a fresh subset
+  // each time so it never feels like "the same 12 words" the way a single freshly-finished
+  // unit's own quiz does.
+  document.getElementById("practiceSub").textContent = unitsDone
+    ? `Shuffled questions from all ${unitsDone} unit${unitsDone > 1 ? "s" : ""} you've completed`
+    : "Finish a unit first to unlock this";
+  document.getElementById("practiceCta").disabled = unitsDone === 0;
+  document.getElementById("practiceCta").style.opacity = unitsDone ? "1" : "0.6";
+
   const grid = document.getElementById("unitGrid");
   grid.innerHTML = "";
   UNITS.forEach((u, i) => {
@@ -576,6 +592,9 @@ function renderHome() {
 document.getElementById("paceIntensiveBtn").onclick = () => { state.paceMode = "intensive"; save(); renderHome(); };
 document.getElementById("paceSteadyBtn").onclick = () => { state.paceMode = "steady"; save(); renderHome(); };
 document.getElementById("reviewCta").onclick = () => { if (dueReviewItems().length) startReview(); };
+document.getElementById("practiceCta").onclick = () => {
+  if (UNITS.some(u => state.unitDone[u.id])) startPractice();
+};
 document.getElementById("resetAllBtn").onclick = () => {
   if (confirm("Reset all progress? This can't be undone.")) {
     localStorage.removeItem(STORAGE_KEY);
@@ -709,9 +728,29 @@ function finishQuiz() {
   show("screen-result");
 }
 
-let reviewQueue = [], reviewIdx = 0;
+let reviewQueue = [], reviewIdx = 0, reviewMode = "due";
+const PRACTICE_SESSION_SIZE = 20;
 function startReview() {
+  reviewMode = "due";
+  document.querySelector("#screen-review .screen-title").textContent = "Daily review";
   reviewQueue = dueReviewItems().sort(() => Math.random() - 0.5).map(d => ({
+    ...d, dir: Math.random() < 0.5 ? "nl-en" : "en-nl",
+  }));
+  reviewIdx = 0;
+  showReviewQ();
+  show("screen-review");
+}
+// Cumulative across every unit marked complete so far (unit 1-4 done -> pulls from 1-4, unit
+// 1-9 done -> pulls from 1-9, etc) -- NOT gated by the SRS due-date schedule the way Daily
+// review is, so there's always plenty to practice instead of "the same handful of words".
+// Capped at PRACTICE_SESSION_SIZE and freshly reshuffled every time it's started, so repeated
+// sessions surface a different mix rather than the identical set in the identical order.
+function startPractice() {
+  reviewMode = "practice";
+  document.querySelector("#screen-review .screen-title").textContent = "Mixed practice";
+  const pool = [];
+  UNITS.filter(u => state.unitDone[u.id]).forEach(u => u.items.forEach((item, idx) => pool.push({ unit: u, idx, item })));
+  reviewQueue = pool.sort(() => Math.random() - 0.5).slice(0, PRACTICE_SESSION_SIZE).map(d => ({
     ...d, dir: Math.random() < 0.5 ? "nl-en" : "en-nl",
   }));
   reviewIdx = 0;
@@ -758,9 +797,11 @@ function showReviewQ() {
         reviewIdx++;
         if (reviewIdx >= reviewQueue.length) {
           touchStreak(); save();
-          document.getElementById("resultEmoji").textContent = "🔁";
-          document.getElementById("resultTitle").textContent = "Review complete!";
-          document.getElementById("resultSub").textContent = "Nice work — check back tomorrow for more.";
+          document.getElementById("resultEmoji").textContent = reviewMode === "practice" ? "🧠" : "🔁";
+          document.getElementById("resultTitle").textContent = reviewMode === "practice" ? "Practice complete!" : "Review complete!";
+          document.getElementById("resultSub").textContent = reviewMode === "practice"
+            ? "Nice work — start another round anytime for a fresh mix from every unit you've finished."
+            : "Nice work — check back tomorrow for more.";
           show("screen-result");
         } else showReviewQ();
       }, 700);
