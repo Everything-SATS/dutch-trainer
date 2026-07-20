@@ -729,7 +729,6 @@ function finishQuiz() {
 }
 
 let reviewQueue = [], reviewIdx = 0, reviewMode = "due";
-const PRACTICE_SESSION_SIZE = 20;
 function startReview() {
   reviewMode = "due";
   document.querySelector("#screen-review .screen-title").textContent = "Daily review";
@@ -743,14 +742,15 @@ function startReview() {
 // Cumulative across every unit marked complete so far (unit 1-4 done -> pulls from 1-4, unit
 // 1-9 done -> pulls from 1-9, etc) -- NOT gated by the SRS due-date schedule the way Daily
 // review is, so there's always plenty to practice instead of "the same handful of words".
-// Capped at PRACTICE_SESSION_SIZE and freshly reshuffled every time it's started, so repeated
-// sessions surface a different mix rather than the identical set in the identical order.
+// Uncapped, deliberately: the whole pool grows with every unit finished (~12 words/unit, so by
+// unit 14 a round covers ~168 questions) rather than sampling a fixed subset -- reshuffled
+// fresh every time it's started so the ORDER still varies even though the set doesn't.
 function startPractice() {
   reviewMode = "practice";
   document.querySelector("#screen-review .screen-title").textContent = "Mixed practice";
   const pool = [];
   UNITS.filter(u => state.unitDone[u.id]).forEach(u => u.items.forEach((item, idx) => pool.push({ unit: u, idx, item })));
-  reviewQueue = pool.sort(() => Math.random() - 0.5).slice(0, PRACTICE_SESSION_SIZE).map(d => ({
+  reviewQueue = pool.sort(() => Math.random() - 0.5).map(d => ({
     ...d, dir: Math.random() < 0.5 ? "nl-en" : "en-nl",
   }));
   reviewIdx = 0;
