@@ -159,6 +159,23 @@
   .preview-item .p-en { font-size: 0.85rem; color: var(--muted); }
   .preview-item .p-speak { font-size: 1.2rem; flex-shrink: 0; }
 
+  .trouble-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 16px; margin: 16px 0; box-shadow: var(--shadow); }
+  .trouble-title { font-weight: 800; font-size: 0.85rem; margin-bottom: 8px; }
+  .trouble-list { display: flex; flex-direction: column; gap: 7px; }
+  .trouble-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 0.85rem; }
+  .trouble-row .tw-word { font-weight: 700; }
+  .trouble-row .tw-en { color: var(--muted); font-weight: 500; }
+  .trouble-row .tw-count { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.78rem; white-space: nowrap; }
+
+  .test-item { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; cursor: pointer; }
+  .test-item .ti-main { font-weight: 800; font-size: 0.9rem; }
+  .test-item .ti-sub { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+  .test-item .ti-badge { font-size: 0.72rem; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .test-item .ti-badge.done { background: var(--good-soft); color: var(--good); }
+  .test-item .ti-badge.pending { background: var(--track); color: var(--muted); }
+
   .primary-btn {
     display: block; width: 100%; max-width: 420px; margin: 10px auto 0; padding: 14px;
     border-radius: 14px; border: none; background: var(--accent); color: var(--accent-ink);
@@ -173,6 +190,9 @@
   .quiz-q { text-align: center; margin: 8px 0 20px; }
   .quiz-q .prompt-label { font-size: 0.76rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
   .quiz-q .prompt-word { font-size: 1.6rem; font-weight: 900; margin-top: 6px; }
+  .review-speak-btn { display: block; margin: 10px auto 0; background: none; border: none;
+    font-size: 1.7rem; line-height: 1; cursor: pointer; padding: 4px; }
+  .review-speak-btn[hidden] { display: none; }
   .quiz-opts { display: flex; flex-direction: column; gap: 10px; max-width: 420px; margin: 0 auto; }
   .quiz-opts button {
     padding: 14px; border-radius: 14px; border: 1.5px solid var(--border); background: var(--surface);
@@ -324,6 +344,20 @@
     <button class="primary-btn" onclick="goHome()">Back to units</button>
   </div>
 
+  <div id="screen-practice-list" class="screen">
+    <div class="back-row">
+      <button class="back-btn" onclick="goHome()">← Units</button>
+      <div class="screen-title">Mixed practice</div>
+    </div>
+    <div id="troubleWordsPanel" class="trouble-panel" hidden>
+      <div class="trouble-title">📊 Words you often get wrong</div>
+      <div id="troubleWordsList" class="trouble-list"></div>
+    </div>
+    <button class="primary-btn" id="newMixedTestBtn">🎲 Start a new mixed practice test</button>
+    <h2 class="section-h">Saved tests</h2>
+    <div id="mixedTestsList" class="preview-list"></div>
+  </div>
+
   <div id="screen-review" class="screen">
     <div class="back-row">
       <button class="back-btn" onclick="goHome()">← Units</button>
@@ -333,6 +367,7 @@
     <div class="quiz-q">
       <div class="prompt-label" id="reviewPromptLabel"></div>
       <div class="prompt-word" id="reviewPromptWord"></div>
+      <button type="button" class="review-speak-btn" id="reviewSpeakBtn" aria-label="Hear pronunciation" hidden>🔊</button>
     </div>
     <div class="quiz-opts" id="reviewOpts"></div>
   </div>
@@ -443,6 +478,7 @@ function loadState() {
   if (!s.streak) s.streak = { count: 0, lastActive: null };
   if (!s.paceMode) s.paceMode = "intensive";
   if (!s.voiceURI) s.voiceURI = null;
+  if (!s.mixedTests) s.mixedTests = [];
   return s;
 }
 let state = loadState();
@@ -593,7 +629,7 @@ document.getElementById("paceIntensiveBtn").onclick = () => { state.paceMode = "
 document.getElementById("paceSteadyBtn").onclick = () => { state.paceMode = "steady"; save(); renderHome(); };
 document.getElementById("reviewCta").onclick = () => { if (dueReviewItems().length) startReview(); };
 document.getElementById("practiceCta").onclick = () => {
-  if (UNITS.some(u => state.unitDone[u.id])) startPractice();
+  if (UNITS.some(u => state.unitDone[u.id])) openPracticeList();
 };
 document.getElementById("resetAllBtn").onclick = () => {
   if (confirm("Reset all progress? This can't be undone.")) {
@@ -731,6 +767,7 @@ function finishQuiz() {
 let reviewQueue = [], reviewIdx = 0, reviewMode = "due";
 function startReview() {
   reviewMode = "due";
+  activeTestId = null;
   document.querySelector("#screen-review .screen-title").textContent = "Daily review";
   reviewQueue = dueReviewItems().sort(() => Math.random() - 0.5).map(d => ({
     ...d, dir: Math.random() < 0.5 ? "nl-en" : "en-nl",
@@ -739,20 +776,97 @@ function startReview() {
   showReviewQ();
   show("screen-review");
 }
+// ---- Mixed practice: generated tests are SAVED (not thrown away after one run), so past
+// results can be reviewed and any specific test can be reopened/redone on demand. ----
+function fmtTestDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + " " +
+    d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+
 // Cumulative across every unit marked complete so far (unit 1-4 done -> pulls from 1-4, unit
-// 1-9 done -> pulls from 1-9, etc) -- NOT gated by the SRS due-date schedule the way Daily
-// review is, so there's always plenty to practice instead of "the same handful of words".
-// Uncapped, deliberately: the whole pool grows with every unit finished (~12 words/unit, so by
-// unit 14 a round covers ~168 questions) rather than sampling a fixed subset -- reshuffled
-// fresh every time it's started so the ORDER still varies even though the set doesn't.
-function startPractice() {
+// 1-9 done -> pulls from 1-9, etc), uncapped -- the pool grows with every unit finished (~12
+// words/unit, so by unit 14 a test covers ~168 questions). Only unitId/idx/dir are stored (not
+// the word text itself), so a saved test always resolves against the current UNITS data.
+function generateMixedTest() {
+  const pool = [];
+  UNITS.filter(u => state.unitDone[u.id]).forEach(u => u.items.forEach((item, idx) => pool.push({ unitId: u.id, idx })));
+  const questions = pool.sort(() => Math.random() - 0.5).map(q => ({
+    unitId: q.unitId, idx: q.idx, dir: Math.random() < 0.5 ? "nl-en" : "en-nl",
+  }));
+  const test = {
+    id: "t" + Date.now(), createdAt: new Date().toISOString(),
+    questions, completed: false, score: null, total: questions.length, wrongItems: [],
+  };
+  state.mixedTests.unshift(test);
+  save();
+  return test;
+}
+function resolveTestQuestion(q) {
+  const unit = UNITS.find(u => u.id === q.unitId);
+  return { unit, idx: q.idx, item: unit.items[q.idx], dir: q.dir };
+}
+
+function openPracticeList() {
+  renderTroubleWords();
+  renderMixedTestsList();
+  show("screen-practice-list");
+}
+// Tallies how often each word has been gotten WRONG across every completed test, so you can
+// spot trends instead of just seeing a single pass/fail score -- the same word missed in
+// several different tests floats to the top here.
+function renderTroubleWords() {
+  const tally = {};
+  state.mixedTests.filter(t => t.completed).forEach(t => {
+    (t.wrongItems || []).forEach(w => {
+      const key = w.unitId + "-" + w.idx;
+      tally[key] = (tally[key] || 0) + 1;
+    });
+  });
+  const rows = Object.entries(tally).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const panel = document.getElementById("troubleWordsPanel");
+  if (!rows.length) { panel.hidden = true; return; }
+  panel.hidden = false;
+  document.getElementById("troubleWordsList").innerHTML = rows.map(([key, count]) => {
+    const [unitId, idxStr] = key.split("-");
+    const unit = UNITS.find(u => u.id === unitId);
+    const item = unit ? unit.items[Number(idxStr)] : null;
+    if (!item) return "";
+    return `<div class="trouble-row"><span class="tw-word">${item[0]} <span class="tw-en">— ${item[1]}</span></span>` +
+      `<span class="tw-count">missed ${count}×</span></div>`;
+  }).join("");
+}
+function renderMixedTestsList() {
+  const wrap = document.getElementById("mixedTestsList");
+  if (!state.mixedTests.length) {
+    wrap.innerHTML = `<div style="text-align:center;color:var(--muted);font-size:0.85rem;padding:16px 0;">No saved tests yet — start one above.</div>`;
+    return;
+  }
+  wrap.innerHTML = "";
+  state.mixedTests.forEach(t => {
+    const row = document.createElement("div");
+    row.className = "test-item";
+    const badge = t.completed
+      ? `<span class="ti-badge done">${t.score} / ${t.total}</span>`
+      : `<span class="ti-badge pending">Not started</span>`;
+    row.innerHTML = `<div><div class="ti-main">${t.questions.length} questions</div>` +
+      `<div class="ti-sub">${fmtTestDate(t.createdAt)}</div></div>${badge}`;
+    row.onclick = () => startSavedTest(t.id);
+    wrap.appendChild(row);
+  });
+}
+document.getElementById("newMixedTestBtn").onclick = () => startSavedTest(generateMixedTest().id);
+
+let activeTestId = null, sessionWrongItems = [], sessionScore = 0;
+function startSavedTest(testId) {
+  const test = state.mixedTests.find(t => t.id === testId);
+  if (!test) return;
+  activeTestId = testId;
+  sessionWrongItems = [];
+  sessionScore = 0;
   reviewMode = "practice";
   document.querySelector("#screen-review .screen-title").textContent = "Mixed practice";
-  const pool = [];
-  UNITS.filter(u => state.unitDone[u.id]).forEach(u => u.items.forEach((item, idx) => pool.push({ unit: u, idx, item })));
-  reviewQueue = pool.sort(() => Math.random() - 0.5).map(d => ({
-    ...d, dir: Math.random() < 0.5 ? "nl-en" : "en-nl",
-  }));
+  reviewQueue = test.questions.map(resolveTestQuestion);
   reviewIdx = 0;
   showReviewQ();
   show("screen-review");
@@ -769,16 +883,27 @@ function showReviewQ() {
   const pool = flat.filter(f => f.unit.id !== r.unit.id || f.idx !== r.idx);
   const wrongPool = pool.sort(() => Math.random() - 0.5).slice(0, 3);
   let opts, correctAnswer;
+  // r.item is always [dutch, english] regardless of question direction, so this is always the
+  // right word to pronounce whether the prompt is showing it (nl-en) or not (en-nl).
+  const dutchWord = r.item[0];
+  const speakBtn = document.getElementById("reviewSpeakBtn");
+  speakBtn.onclick = () => speak(dutchWord);
   if (r.dir === "nl-en") {
     document.getElementById("reviewPromptLabel").textContent = "What does this mean?";
     document.getElementById("reviewPromptWord").textContent = r.item[0];
     correctAnswer = r.item[1];
     opts = [correctAnswer, ...wrongPool.map(w => w.item[1])].sort(() => Math.random() - 0.5);
+    // The Dutch word is already sitting there as text, so hearing it isn't a spoiler --
+    // auto-play immediately and let it be replayed on demand.
+    speakBtn.hidden = false;
+    speak(dutchWord);
   } else {
     document.getElementById("reviewPromptLabel").textContent = "How do you say this in Dutch?";
     document.getElementById("reviewPromptWord").textContent = r.item[1];
     correctAnswer = r.item[0];
     opts = [correctAnswer, ...wrongPool.map(w => w.item[0])].sort(() => Math.random() - 0.5);
+    // Would give away the answer before they've guessed -- stays hidden until they answer.
+    speakBtn.hidden = true;
   }
   const wrap = document.getElementById("reviewOpts");
   wrap.innerHTML = "";
@@ -793,14 +918,31 @@ function showReviewQ() {
       btn.classList.add(correct ? "correct" : "wrong");
       if (!correct) [...wrap.children].forEach(b => { if (b.textContent === correctAnswer) b.classList.add("correct"); });
       markReviewed(itemKey(r.unit.id, r.idx), correct);
+      if (reviewMode === "practice") {
+        if (correct) sessionScore++;
+        else sessionWrongItems.push({ unitId: r.unit.id, idx: r.idx });
+      }
+      // Confirm the correct pronunciation once the answer's revealed, either way -- and make
+      // sure the replay button is available now regardless of direction.
+      speak(dutchWord);
+      speakBtn.hidden = false;
       setTimeout(() => {
         reviewIdx++;
         if (reviewIdx >= reviewQueue.length) {
-          touchStreak(); save();
+          touchStreak();
+          if (reviewMode === "practice" && activeTestId) {
+            const test = state.mixedTests.find(t => t.id === activeTestId);
+            if (test) {
+              test.completed = true;
+              test.score = sessionScore;
+              test.wrongItems = sessionWrongItems;
+            }
+          }
+          save();
           document.getElementById("resultEmoji").textContent = reviewMode === "practice" ? "🧠" : "🔁";
           document.getElementById("resultTitle").textContent = reviewMode === "practice" ? "Practice complete!" : "Review complete!";
           document.getElementById("resultSub").textContent = reviewMode === "practice"
-            ? "Nice work — start another round anytime for a fresh mix from every unit you've finished."
+            ? `You scored ${sessionScore} / ${reviewQueue.length} — saved to your practice tests, along with any words to work on.`
             : "Nice work — check back tomorrow for more.";
           show("screen-result");
         } else showReviewQ();
