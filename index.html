@@ -270,7 +270,7 @@
 
     <button class="review-cta practice-cta" id="practiceCta">
       <div class="emoji">🧠</div>
-      <div class="txt"><strong id="practiceHeadline">Mixed practice</strong><span id="practiceSub">Finish a unit first to unlock this</span></div>
+      <div class="txt"><strong id="practiceHeadline">Mega Test</strong><span id="practiceSub">Finish a unit first to unlock this</span></div>
     </button>
 
     <h2 class="section-h">14 Units</h2>
@@ -353,13 +353,13 @@
   <div id="screen-practice-list" class="screen">
     <div class="back-row">
       <button class="back-btn" onclick="goHome()">← Units</button>
-      <div class="screen-title">Mixed practice</div>
+      <div class="screen-title">Mega Test</div>
     </div>
     <div id="troubleWordsPanel" class="trouble-panel" hidden>
       <div class="trouble-title">📊 Words you often get wrong</div>
       <div id="troubleWordsList" class="trouble-list"></div>
     </div>
-    <button class="primary-btn" id="newMixedTestBtn">🎲 Start a new mixed practice test</button>
+    <button class="primary-btn" id="newMixedTestBtn">🎲 Start a new Mega Test</button>
     <h2 class="section-h">Saved tests</h2>
     <div id="mixedTestsList" class="preview-list"></div>
   </div>
@@ -879,7 +879,7 @@ function startSavedTest(testId) {
   sessionWrongItems = [];
   sessionScore = 0;
   reviewMode = "practice";
-  document.querySelector("#screen-review .screen-title").textContent = "Mixed practice";
+  document.querySelector("#screen-review .screen-title").textContent = "Mega Test";
   reviewQueue = test.questions.map(resolveTestQuestion);
   reviewIdx = 0;
   showReviewQ();
@@ -910,10 +910,11 @@ function showReviewQ() {
     correctAnswer = r.item[1];
     opts = [correctAnswer, ...wrongPool.map(w => w.item[1])].sort(() => Math.random() - 0.5);
     // The Dutch word is already sitting there as text, so hearing it isn't a spoiler --
-    // auto-play immediately and let it be replayed on demand.
+    // auto-play immediately and let it be replayed on demand. EXCEPT in Mega Test mode, where
+    // the user specifically wants it silent by default -- only 🐢/🔊 on tap.
     speakBtn.hidden = false;
     slowBtn.hidden = false;
-    speak(dutchWord);
+    if (reviewMode !== "practice") speak(dutchWord);
   } else {
     document.getElementById("reviewPromptLabel").textContent = "How do you say this in Dutch?";
     document.getElementById("reviewPromptWord").textContent = r.item[1];
@@ -941,8 +942,9 @@ function showReviewQ() {
         else sessionWrongItems.push({ unitId: r.unit.id, idx: r.idx });
       }
       // Confirm the correct pronunciation once the answer's revealed, either way -- and make
-      // sure the replay buttons are available now regardless of direction.
-      speak(dutchWord);
+      // sure the replay buttons are available now regardless of direction. Mega Test stays
+      // silent by default here too -- the buttons still appear, just no auto-play.
+      if (reviewMode !== "practice") speak(dutchWord);
       speakBtn.hidden = false;
       slowBtn.hidden = false;
       setTimeout(() => {
@@ -959,9 +961,9 @@ function showReviewQ() {
           }
           save();
           document.getElementById("resultEmoji").textContent = reviewMode === "practice" ? "🧠" : "🔁";
-          document.getElementById("resultTitle").textContent = reviewMode === "practice" ? "Practice complete!" : "Review complete!";
+          document.getElementById("resultTitle").textContent = reviewMode === "practice" ? "Mega Test complete!" : "Review complete!";
           document.getElementById("resultSub").textContent = reviewMode === "practice"
-            ? `You scored ${sessionScore} / ${reviewQueue.length} — saved to your practice tests, along with any words to work on.`
+            ? `You scored ${sessionScore} / ${reviewQueue.length} — saved to your Mega Tests, along with any words to work on.`
             : "Nice work — check back tomorrow for more.";
           show("screen-result");
         } else showReviewQ();
