@@ -920,9 +920,12 @@ function showReviewQ() {
     document.getElementById("reviewPromptWord").textContent = r.item[1];
     correctAnswer = r.item[0];
     opts = [correctAnswer, ...wrongPool.map(w => w.item[0])].sort(() => Math.random() - 0.5);
-    // Would give away the answer before they've guessed -- stays hidden until they answer.
-    speakBtn.hidden = true;
-    slowBtn.hidden = true;
+    // Daily Review still hides these until answered (would give away a blind quiz answer).
+    // Mega Test never auto-plays regardless of direction (see above), so there's no reason to
+    // hide the buttons too -- they're available the moment the question appears, every time.
+    const hideUntilAnswered = reviewMode !== "practice";
+    speakBtn.hidden = hideUntilAnswered;
+    slowBtn.hidden = hideUntilAnswered;
   }
   const wrap = document.getElementById("reviewOpts");
   wrap.innerHTML = "";
