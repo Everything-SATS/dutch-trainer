@@ -202,9 +202,12 @@
   .quiz-opts button {
     padding: 14px; border-radius: 14px; border: 1.5px solid var(--border); background: var(--surface);
     font-weight: 700; font-size: 0.95rem; cursor: pointer; text-align: left; color: var(--ink);
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
   }
   .quiz-opts button.correct { border-color: var(--good); background: var(--good-soft); color: var(--good); }
   .quiz-opts button.wrong { border-color: #D9534F; background: #FBE7E6; color: #C0392B; }
+  .opt-speak { font-size: 1.15rem; flex-shrink: 0; opacity: 0.75; line-height: 1; }
+  .opt-speak:hover { opacity: 1; }
   .type-input {
     max-width: 420px; margin: 0 auto; display: block; width: 100%; padding: 14px 16px;
     border-radius: 14px; border: 1.5px solid var(--border); background: var(--surface); color: var(--ink);
@@ -334,6 +337,8 @@
     <div class="quiz-q">
       <div class="prompt-label" id="quizPromptLabel"></div>
       <div class="prompt-word" id="quizPromptWord"></div>
+      <button type="button" class="review-speak-btn" id="quizSpeakBtn" aria-label="Hear pronunciation" hidden>🔊</button>
+      <button type="button" class="slow-btn" id="quizSlowBtn" aria-label="Hear slowly" hidden>🐢 Slow</button>
     </div>
     <div class="quiz-opts" id="quizOpts"></div>
     <input type="text" id="quizTypeInput" class="type-input" style="display:none;" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Type the Dutch word…">
@@ -553,6 +558,19 @@ function speak(text, rate) {
   speechSynthesis.speak(u);
 }
 
+// Every Dutch word anywhere in the app should be individually listenable -- including each
+// multiple-choice OPTION, right or wrong, not just the prompt. stopPropagation keeps a tap on
+// the icon from also triggering the option button's own answer-selection click handler.
+function addOptionSpeakIcon(btn, dutchText) {
+  const icon = document.createElement("span");
+  icon.className = "opt-speak";
+  icon.textContent = "🔊";
+  icon.setAttribute("role", "button");
+  icon.setAttribute("aria-label", "Hear pronunciation");
+  icon.addEventListener("click", (ev) => { ev.stopPropagation(); speak(dutchText); });
+  btn.appendChild(icon);
+}
+
 function show(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
@@ -733,32 +751,47 @@ function showQuizQ() {
   const q = quizQueue[quizIdx];
   document.getElementById("quizProgress").textContent = `${quizIdx + 1} / ${quizQueue.length}`;
   const pool = quizUnit.items;
+  const dutchWord = q.item[0]; // item is always [dutch, english] regardless of direction
+  const speakBtn = document.getElementById("quizSpeakBtn");
+  const slowBtn = document.getElementById("quizSlowBtn");
+  speakBtn.onclick = () => speak(dutchWord);
+  slowBtn.onclick = () => speak(dutchWord, 0.5);
   if (q.dir === "nl-en") {
     document.getElementById("quizPromptLabel").textContent = "What does this mean?";
     document.getElementById("quizPromptWord").textContent = q.item[0];
+    // The Dutch word is the prompt itself, already shown as text -- buttons available
+    // immediately (no spoiler either way; options here are English).
+    speakBtn.hidden = false; slowBtn.hidden = false;
     const opts = buildOptions(q.idx, pool.map(p => p[1]));
-    renderQuizOpts(opts, q.item[1], q.idx);
+    renderQuizOpts(opts, q.item[1], q.idx, false);
   } else {
     document.getElementById("quizPromptLabel").textContent = "How do you say this in Dutch?";
     document.getElementById("quizPromptWord").textContent = q.item[1];
+    // Prompt is English -- nothing Dutch to speak there, but every option below (all Dutch)
+    // gets its own listen icon instead.
+    speakBtn.hidden = true; slowBtn.hidden = true;
     const opts = buildOptions(q.idx, pool.map(p => p[0]));
-    renderQuizOpts(opts, q.item[0], q.idx);
+    renderQuizOpts(opts, q.item[0], q.idx, true);
   }
 }
-function renderQuizOpts(opts, correctAnswer, srcIdx) {
+function renderQuizOpts(opts, correctAnswer, srcIdx, optsAreDutch) {
   const wrap = document.getElementById("quizOpts");
   wrap.innerHTML = "";
   let answered = false;
   opts.forEach(opt => {
     const btn = document.createElement("button");
-    btn.textContent = opt;
+    btn.dataset.opt = opt;
+    const wordSpan = document.createElement("span");
+    wordSpan.textContent = opt;
+    btn.appendChild(wordSpan);
+    if (optsAreDutch) addOptionSpeakIcon(btn, opt);
     btn.onclick = () => {
       if (answered) return;
       answered = true;
       const correct = opt === correctAnswer;
       btn.classList.add(correct ? "correct" : "wrong");
       if (!correct) {
-        [...wrap.children].forEach(b => { if (b.textContent === correctAnswer) b.classList.add("correct"); });
+        [...wrap.children].forEach(b => { if (b.dataset.opt === correctAnswer) b.classList.add("correct"); });
       } else {
         quizScore++;
       }
@@ -904,14 +937,16 @@ function showReviewQ() {
   const slowBtn = document.getElementById("reviewSlowBtn");
   speakBtn.onclick = () => speak(dutchWord);
   slowBtn.onclick = () => speak(dutchWord, 0.5);
+  let optsAreDutch;
   if (r.dir === "nl-en") {
     document.getElementById("reviewPromptLabel").textContent = "What does this mean?";
     document.getElementById("reviewPromptWord").textContent = r.item[0];
     correctAnswer = r.item[1];
     opts = [correctAnswer, ...wrongPool.map(w => w.item[1])].sort(() => Math.random() - 0.5);
+    optsAreDutch = false;
     // The Dutch word is already sitting there as text, so hearing it isn't a spoiler --
-    // auto-play immediately and let it be replayed on demand. EXCEPT in Mega Test mode, where
-    // the user specifically wants it silent by default -- only 🐢/🔊 on tap.
+    // buttons always available. Daily Review also auto-plays it; Mega Test stays silent by
+    // default (only 🐢/🔊 on tap) per your request.
     speakBtn.hidden = false;
     slowBtn.hidden = false;
     if (reviewMode !== "practice") speak(dutchWord);
@@ -920,25 +955,28 @@ function showReviewQ() {
     document.getElementById("reviewPromptWord").textContent = r.item[1];
     correctAnswer = r.item[0];
     opts = [correctAnswer, ...wrongPool.map(w => w.item[0])].sort(() => Math.random() - 0.5);
-    // Daily Review still hides these until answered (would give away a blind quiz answer).
-    // Mega Test never auto-plays regardless of direction (see above), so there's no reason to
-    // hide the buttons too -- they're available the moment the question appears, every time.
-    const hideUntilAnswered = reviewMode !== "practice";
-    speakBtn.hidden = hideUntilAnswered;
-    slowBtn.hidden = hideUntilAnswered;
+    optsAreDutch = true;
+    // Prompt is English -- nothing Dutch to speak there, but every option below (all Dutch,
+    // right or wrong) gets its own listen icon instead, available immediately either way.
+    speakBtn.hidden = true;
+    slowBtn.hidden = true;
   }
   const wrap = document.getElementById("reviewOpts");
   wrap.innerHTML = "";
   let answered = false;
   opts.forEach(opt => {
     const btn = document.createElement("button");
-    btn.textContent = opt;
+    btn.dataset.opt = opt;
+    const wordSpan = document.createElement("span");
+    wordSpan.textContent = opt;
+    btn.appendChild(wordSpan);
+    if (optsAreDutch) addOptionSpeakIcon(btn, opt);
     btn.onclick = () => {
       if (answered) return;
       answered = true;
       const correct = opt === correctAnswer;
       btn.classList.add(correct ? "correct" : "wrong");
-      if (!correct) [...wrap.children].forEach(b => { if (b.textContent === correctAnswer) b.classList.add("correct"); });
+      if (!correct) [...wrap.children].forEach(b => { if (b.dataset.opt === correctAnswer) b.classList.add("correct"); });
       markReviewed(itemKey(r.unit.id, r.idx), correct);
       if (reviewMode === "practice") {
         if (correct) sessionScore++;
