@@ -158,6 +158,8 @@
   .preview-item .p-nl { font-weight: 800; }
   .preview-item .p-en { font-size: 0.85rem; color: var(--muted); }
   .preview-item .p-speak { font-size: 1.2rem; flex-shrink: 0; }
+  .preview-item .p-speak-group { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .preview-item .p-slow { font-size: 1.1rem; opacity: 0.75; }
 
   .trouble-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
     padding: 14px 16px; margin: 16px 0; box-shadow: var(--shadow); }
@@ -193,6 +195,9 @@
   .review-speak-btn { display: block; margin: 10px auto 0; background: none; border: none;
     font-size: 1.7rem; line-height: 1; cursor: pointer; padding: 4px; }
   .review-speak-btn[hidden] { display: none; }
+  .slow-btn { display: block; margin: 4px auto 0; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 999px; padding: 8px 16px; font-size: 0.82rem; font-weight: 700; color: var(--ink); cursor: pointer; }
+  .slow-btn[hidden] { display: none; }
   .quiz-opts { display: flex; flex-direction: column; gap: 10px; max-width: 420px; margin: 0 auto; }
   .quiz-opts button {
     padding: 14px; border-radius: 14px; border: 1.5px solid var(--border); background: var(--surface);
@@ -312,6 +317,7 @@
         <div class="en" id="learnEn"></div>
         <div class="hint" id="learnHint">Tap the card to reveal &amp; hear it</div>
       </div>
+      <button type="button" class="slow-btn" id="learnSlowBtn" aria-label="Hear slowly">🐢 Slow</button>
       <div class="assess-row" id="learnAssessRow" style="display:none;">
         <button class="again" id="learnAgainBtn">Still learning</button>
         <button class="got-it" id="learnGotItBtn">Got it ✓</button>
@@ -368,6 +374,7 @@
       <div class="prompt-label" id="reviewPromptLabel"></div>
       <div class="prompt-word" id="reviewPromptWord"></div>
       <button type="button" class="review-speak-btn" id="reviewSpeakBtn" aria-label="Hear pronunciation" hidden>🔊</button>
+      <button type="button" class="slow-btn" id="reviewSlowBtn" aria-label="Hear slowly" hidden>🐢 Slow</button>
     </div>
     <div class="quiz-opts" id="reviewOpts"></div>
   </div>
@@ -535,14 +542,14 @@ document.getElementById("voiceSelect").addEventListener("change", e => {
   state.voiceURI = e.target.value; save();
 });
 
-function speak(text) {
+function speak(text, rate) {
   if (typeof speechSynthesis === "undefined") return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text.replace(/\.\.\./g, ""));
   u.lang = "nl-NL";
   const v = voices.find(v => v.voiceURI === state.voiceURI);
   if (v) u.voice = v;
-  u.rate = 0.92;
+  u.rate = rate ?? 0.92;
   speechSynthesis.speak(u);
 }
 
@@ -648,8 +655,10 @@ function openUnit(unitId) {
   currentUnit.items.forEach(([nl, en]) => {
     const row = document.createElement("div");
     row.className = "preview-item";
-    row.innerHTML = `<div><div class="p-nl">${nl}</div><div class="p-en">${en}</div></div><div class="p-speak">🔊</div>`;
+    row.innerHTML = `<div><div class="p-nl">${nl}</div><div class="p-en">${en}</div></div>
+      <div class="p-speak-group"><span class="p-slow" title="Hear slowly">🐢</span><span class="p-speak">🔊</span></div>`;
     row.onclick = () => speak(nl);
+    row.querySelector(".p-slow").addEventListener("click", (ev) => { ev.stopPropagation(); speak(nl, 0.5); });
     list.appendChild(row);
   });
   show("screen-unit");
@@ -672,6 +681,11 @@ function showLearnCard() {
   document.getElementById("learnAssessRow").style.display = "none";
   document.getElementById("learnProgress").textContent = `${learnIdx + 1} / ${learnQueue.length}`;
 }
+document.getElementById("learnSlowBtn").addEventListener("click", (ev) => {
+  ev.stopPropagation();
+  const { item } = learnQueue[learnIdx];
+  speak(item[0], 0.5);
+});
 document.getElementById("learnCard").onclick = () => {
   const { item } = learnQueue[learnIdx];
   if (!learnRevealed) {
@@ -887,7 +901,9 @@ function showReviewQ() {
   // right word to pronounce whether the prompt is showing it (nl-en) or not (en-nl).
   const dutchWord = r.item[0];
   const speakBtn = document.getElementById("reviewSpeakBtn");
+  const slowBtn = document.getElementById("reviewSlowBtn");
   speakBtn.onclick = () => speak(dutchWord);
+  slowBtn.onclick = () => speak(dutchWord, 0.5);
   if (r.dir === "nl-en") {
     document.getElementById("reviewPromptLabel").textContent = "What does this mean?";
     document.getElementById("reviewPromptWord").textContent = r.item[0];
@@ -896,6 +912,7 @@ function showReviewQ() {
     // The Dutch word is already sitting there as text, so hearing it isn't a spoiler --
     // auto-play immediately and let it be replayed on demand.
     speakBtn.hidden = false;
+    slowBtn.hidden = false;
     speak(dutchWord);
   } else {
     document.getElementById("reviewPromptLabel").textContent = "How do you say this in Dutch?";
@@ -904,6 +921,7 @@ function showReviewQ() {
     opts = [correctAnswer, ...wrongPool.map(w => w.item[0])].sort(() => Math.random() - 0.5);
     // Would give away the answer before they've guessed -- stays hidden until they answer.
     speakBtn.hidden = true;
+    slowBtn.hidden = true;
   }
   const wrap = document.getElementById("reviewOpts");
   wrap.innerHTML = "";
@@ -923,9 +941,10 @@ function showReviewQ() {
         else sessionWrongItems.push({ unitId: r.unit.id, idx: r.idx });
       }
       // Confirm the correct pronunciation once the answer's revealed, either way -- and make
-      // sure the replay button is available now regardless of direction.
+      // sure the replay buttons are available now regardless of direction.
       speak(dutchWord);
       speakBtn.hidden = false;
+      slowBtn.hidden = false;
       setTimeout(() => {
         reviewIdx++;
         if (reviewIdx >= reviewQueue.length) {
