@@ -236,6 +236,19 @@
   }
 
   footer.note { margin-top: 36px; font-size: 0.78rem; color: var(--muted); text-align: center; }
+
+  .carmode-wrap { max-width: 420px; margin: 0 auto; }
+  .carmode-card {
+    margin-top: 18px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 22px; box-shadow: var(--shadow); padding: 40px 24px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 16px; min-height: 220px; justify-content: center;
+  }
+  .carmode-card .cm-en { font-size: 1.5rem; font-weight: 800; color: var(--accent-2); }
+  .carmode-card .cm-nl { font-size: 2rem; font-weight: 900; letter-spacing: -0.01em; min-height: 1.3em; }
+  .carmode-controls { display: flex; gap: 10px; margin-top: 18px; }
+  .carmode-controls button { margin: 0; flex: 1; }
+  .stop-btn { background: #C0392B; color: #fff; }
+  .carmode-cta { background: linear-gradient(135deg, #2D5FA3, #1f4a85); }
 </style>
 </head>
 <body>
@@ -276,6 +289,11 @@
       <div class="txt"><strong id="practiceHeadline">Mega Test</strong><span id="practiceSub">Finish a unit first to unlock this</span></div>
     </button>
 
+    <button class="review-cta practice-cta carmode-cta" id="carModeHomeCta">
+      <div class="emoji">🚗</div>
+      <div class="txt"><strong>Car mode</strong><span id="carModeHomeSub">Finish a unit first to unlock this</span></div>
+    </button>
+
     <h2 class="section-h">14 Units</h2>
     <div class="unit-grid" id="unitGrid"></div>
 
@@ -305,6 +323,7 @@
     </div>
     <div id="unitPreviewList" class="preview-list"></div>
     <button class="primary-btn" id="startLearnBtn">Start flashcards →</button>
+    <button class="ghost-btn" id="startCarModeBtn">🚗 Car mode — hands-free audio</button>
   </div>
 
   <div id="screen-learn" class="screen">
@@ -367,6 +386,24 @@
     <button class="primary-btn" id="newMixedTestBtn">🎲 Start a new Mega Test</button>
     <h2 class="section-h">Saved tests</h2>
     <div id="mixedTestsList" class="preview-list"></div>
+  </div>
+
+  <div id="screen-carmode" class="screen">
+    <div class="carmode-wrap">
+      <div class="screen-title" id="carModeTitle" style="text-align:center;"></div>
+      <div class="card-progress" id="carModeProgress" style="text-align:center;margin-top:4px;"></div>
+      <div class="carmode-card">
+        <div class="cm-en" id="carModeEn"></div>
+        <div class="cm-nl" id="carModeNl"></div>
+      </div>
+      <div class="carmode-controls">
+        <button class="ghost-btn" id="carModePauseBtn">⏸ Pause</button>
+        <button class="primary-btn stop-btn" id="carModeStopBtn">⏹ Stop</button>
+      </div>
+      <p style="text-align:center;color:var(--muted);font-size:0.78rem;margin-top:14px;">
+        English, then a pause, then Dutch, then a pause — hands-free. Loops automatically.
+      </p>
+    </div>
   </div>
 
   <div id="screen-review" class="screen">
@@ -558,6 +595,29 @@ function speak(text, rate) {
   speechSynthesis.speak(u);
 }
 
+// Promise-wrapped speech, used by Car Mode to sequence English -> pause -> Dutch -> pause
+// without callback nesting. Distinct from speak() (used everywhere else in the app) because Car
+// Mode also needs to speak ENGLISH text, which speak() never does. onerror also resolves rather
+// than rejects -- a single TTS glitch (e.g. a browser momentarily has no voices loaded) should
+// never permanently hang the hands-free loop while someone's driving.
+function speakOnce(text, lang, rate) {
+  return new Promise((resolve) => {
+    if (typeof speechSynthesis === "undefined") { resolve(); return; }
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text.replace(/\.\.\./g, ""));
+    u.lang = lang;
+    if (lang === "nl-NL") {
+      const v = voices.find(v => v.voiceURI === state.voiceURI);
+      if (v) u.voice = v;
+    }
+    u.rate = rate ?? (lang === "nl-NL" ? 0.92 : 1);
+    u.onend = () => resolve();
+    u.onerror = () => resolve();
+    speechSynthesis.speak(u);
+  });
+}
+function wait(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
 // Every Dutch word anywhere in the app should be individually listenable -- including each
 // multiple-choice OPTION, right or wrong, not just the prompt. stopPropagation keeps a tap on
 // the icon from also triggering the option button's own answer-selection click handler.
@@ -630,6 +690,12 @@ function renderHome() {
     : "Finish a unit first to unlock this";
   document.getElementById("practiceCta").disabled = unitsDone === 0;
   document.getElementById("practiceCta").style.opacity = unitsDone ? "1" : "0.6";
+
+  document.getElementById("carModeHomeSub").textContent = unitsDone
+    ? `Hands-free audio through every word from all ${unitsDone} unit${unitsDone > 1 ? "s" : ""} you've completed`
+    : "Finish a unit first to unlock this";
+  document.getElementById("carModeHomeCta").disabled = unitsDone === 0;
+  document.getElementById("carModeHomeCta").style.opacity = unitsDone ? "1" : "0.6";
 
   const grid = document.getElementById("unitGrid");
   grid.innerHTML = "";
@@ -1013,6 +1079,88 @@ function showReviewQ() {
     wrap.appendChild(btn);
   });
 }
+
+// ---- Car mode: hands-free audio playback, English -> 2s pause -> Dutch -> 2s pause -> next,
+// looping continuously (never leaves silence mid-drive waiting for a screen tap). ----
+let carModeActive = false, carModePaused = false, carModeQueue = [], carModeIdx = 0;
+
+function allLearnedItems() {
+  const pool = [];
+  UNITS.filter(u => state.unitDone[u.id]).forEach(u => u.items.forEach((item) => pool.push(item)));
+  return pool.sort(() => Math.random() - 0.5);
+}
+
+async function waitOrStop(ms) {
+  const start = Date.now();
+  while (Date.now() - start < ms) {
+    if (!carModeActive) return;
+    await wait(100);
+  }
+}
+async function speakOrSkipIfPaused(text, lang, rate) {
+  if (!carModeActive) return;
+  while (carModePaused) {
+    await wait(200);
+    if (!carModeActive) return;
+  }
+  await speakOnce(text, lang, rate);
+}
+
+function startCarMode(items, title) {
+  if (!items.length) return;
+  carModeQueue = items;
+  carModeIdx = 0;
+  carModeActive = true;
+  carModePaused = false;
+  document.getElementById("carModeTitle").textContent = title;
+  document.getElementById("carModePauseBtn").textContent = "⏸ Pause";
+  show("screen-carmode");
+  playCarModeItem();
+}
+
+async function playCarModeItem() {
+  if (!carModeActive) return;
+  const [nl, en] = carModeQueue[carModeIdx];
+  document.getElementById("carModeProgress").textContent = `${carModeIdx + 1} / ${carModeQueue.length}`;
+  document.getElementById("carModeEn").textContent = en;
+  document.getElementById("carModeNl").textContent = "···";
+
+  await speakOrSkipIfPaused(en, "en-GB", 1);
+  await waitOrStop(2000);
+  if (!carModeActive) return;
+
+  document.getElementById("carModeNl").textContent = nl;
+  await speakOrSkipIfPaused(nl, "nl-NL");
+  await waitOrStop(2000);
+  if (!carModeActive) return;
+
+  carModeIdx++;
+  if (carModeIdx >= carModeQueue.length) {
+    carModeIdx = 0;
+    await speakOrSkipIfPaused("Starting again from the top.", "en-GB", 1);
+    await waitOrStop(600);
+    if (!carModeActive) return;
+  }
+  playCarModeItem();
+}
+
+function stopCarMode() {
+  carModeActive = false;
+  if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel();
+  goHome();
+}
+function toggleCarModePause() {
+  carModePaused = !carModePaused;
+  if (carModePaused && typeof speechSynthesis !== "undefined") speechSynthesis.cancel();
+  document.getElementById("carModePauseBtn").textContent = carModePaused ? "▶ Resume" : "⏸ Pause";
+}
+document.getElementById("carModeStopBtn").onclick = stopCarMode;
+document.getElementById("carModePauseBtn").onclick = toggleCarModePause;
+document.getElementById("startCarModeBtn").onclick = () => startCarMode(currentUnit.items, currentUnit.icon + " " + currentUnit.title);
+document.getElementById("carModeHomeCta").onclick = () => {
+  const items = allLearnedItems();
+  if (items.length) startCarMode(items, "🚗 Car mode — all words so far");
+};
 
 renderHome();
 
