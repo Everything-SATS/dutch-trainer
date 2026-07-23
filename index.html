@@ -1162,6 +1162,24 @@ document.getElementById("carModeHomeCta").onclick = () => {
   if (items.length) startCarMode(items, "🚗 Car mode — all words so far");
 };
 
+// ---- Keep the screen awake for as long as the app is open -- particularly matters for Car
+// Mode (a phone would otherwise lock mid-drive), but useful for flashcards/quizzes too. The
+// Wake Lock API auto-releases whenever the tab is hidden (backgrounded, screen locked by the
+// user, switched app), so it has to be re-requested on every visibilitychange back to visible,
+// not just once on load. Silently does nothing on browsers that don't support it (older Safari)
+// -- this is a nice-to-have, never something the app should break over. ----
+let wakeLock = null;
+async function requestWakeLock() {
+  if (!("wakeLock" in navigator)) return;
+  try {
+    wakeLock = await navigator.wakeLock.request("screen");
+  } catch (e) { /* e.g. battery saver mode blocked it -- nothing to do about that */ }
+}
+requestWakeLock();
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") requestWakeLock();
+});
+
 renderHome();
 
 if ("serviceWorker" in navigator) {
